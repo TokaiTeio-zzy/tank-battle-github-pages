@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>坦克大战 · Tank Battle</title>
+<style>
+:root{--bg:#101613;--panel:#19231e;--line:#34463a;--text:#edf7ee;--muted:#a6b8aa;--accent:#b7f36b;--red:#ff6b6b}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top,#24352a 0%,#101613 60%);color:var(--text);font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;min-height:100vh}
+header{padding:22px 18px 14px;text-align:center} .eyebrow{font-size:11px;letter-spacing:.24em;color:var(--accent);font-weight:800}h1{margin:6px 0;font-size:clamp(28px,5vw,44px);letter-spacing:-.04em}header p{margin:0;color:var(--muted);font-size:14px}
+main{width:min(1100px,100%);margin:auto;padding:12px 14px 28px;display:grid;grid-template-columns:minmax(0,1fr) 270px;gap:14px}
+.card{background:linear-gradient(145deg,rgba(29,42,33,.97),rgba(19,28,23,.97));border:1px solid var(--line);border-radius:18px;overflow:hidden;box-shadow:0 18px 50px #0003}
+.game-top{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:12px 14px;border-bottom:1px solid var(--line);font-size:13px;color:var(--muted);flex-wrap:wrap}
+.stats{display:flex;gap:14px;flex-wrap:wrap}.stats b{color:var(--text);font-variant-numeric:tabular-nums}
+#gameWrap{position:relative;background:#101a14;padding:10px;display:flex;justify-content:center;align-items:center}
+canvas{display:block;width:min(100%,640px);height:auto;aspect-ratio:4/3;background:#16251a;border-radius:8px;image-rendering:pixelated;touch-action:none}
+.overlay{position:absolute;inset:10px;display:flex;align-items:center;justify-content:center;text-align:center;background:#0b120ddd;border-radius:8px;padding:20px}
+.overlay.hidden{display:none}.overlay-box{max-width:390px}.overlay h2{font-size:28px;margin:0 0 8px}.overlay p{color:#b9c8bb;line-height:1.6;font-size:14px}
+button{font:inherit;cursor:pointer;border:0;border-radius:999px;padding:11px 17px;font-weight:800;transition:transform .15s,opacity .15s}button:active{transform:scale(.97)}.primary{background:var(--accent);color:#142010}.secondary{background:#2a3b30;color:var(--text);border:1px solid #49604d}.game-actions{display:flex;gap:8px;flex-wrap:wrap;padding:12px 14px;border-top:1px solid var(--line)}
+.side{display:flex;flex-direction:column;gap:14px}.side .card{padding:16px}.side h3{margin:0 0 12px;font-size:15px}.muted{color:var(--muted);font-size:12px;line-height:1.6}.leaderboard{list-style:none;margin:0;padding:0}.leaderboard li{display:grid;grid-template-columns:25px 1fr auto;gap:8px;align-items:center;padding:10px 0;border-bottom:1px solid #2b3b30;font-size:13px}.leaderboard li:last-child{border:0}.rank{color:var(--accent);font-weight:900}.score{font-weight:800;font-variant-numeric:tabular-nums}.empty{color:var(--muted);font-size:13px;padding:10px 0}
+.name-row{display:flex;gap:7px}.name-row input{width:100%;min-width:0;background:#101a14;border:1px solid #405343;border-radius:10px;padding:10px;color:var(--text);outline:none}.name-row input:focus{border-color:var(--accent)}.name-row button{padding:9px 12px}
+.controls{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;max-width:260px;margin:12px auto 0;touch-action:none}.controls button{border-radius:12px;padding:12px 0;background:#26382b;color:#f2fff1;border:1px solid #415b46;font-size:18px;user-select:none;-webkit-user-select:none}.controls .blank{visibility:hidden}.fire{background:#4a2929!important;border-color:#824343!important}.help{margin-top:10px;color:var(--muted);font-size:12px;line-height:1.7}.tag{display:inline-block;border:1px solid #465b49;border-radius:999px;padding:4px 8px;color:#cfe8ce;font-size:11px}
+footer{text-align:center;color:#748679;font-size:11px;padding:0 12px 24px}
+@media(max-width:780px){main{grid-template-columns:1fr}.side{display:grid;grid-template-columns:1fr 1fr}.side .card:first-child{grid-column:1/-1}}
+@media(max-width:480px){header{padding-top:17px}.side{grid-template-columns:1fr}.side .card:first-child{grid-column:auto}main{padding:8px}.game-top{padding:10px}.game-actions button{flex:1}}
+</style>
+</head>
+<body>
+<header><div class="eyebrow">ARCADE CLASSICS · 001</div><h1>坦克大战</h1><p>守住基地，击败敌军，冲击最高分。</p></header>
+<main>
+<section class="card">
+  <div class="game-top"><div class="stats"><span>得分 <b id="score">0</b></span><span>生命 <b id="lives">3</b></span><span>关卡 <b id="level">1</b></span></div><span class="tag" id="status">准备就绪</span></div>
+  <div id="gameWrap">
+    <canvas id="game" width="640" height="480" aria-label="坦克大战游戏区域"></canvas>
+    <div class="overlay" id="overlay"><div class="overlay-box"><h2 id="overlayTitle">准备开战？</h2><p id="overlayText">驾驶绿色坦克消灭敌军，保护底部的基地。键盘方向键或 WASD 移动，空格键开火。</p><button class="primary" id="startBtn">开始游戏</button></div></div>
+  </div>
+  <div class="game-actions"><button class="primary" id="restartBtn">重新开始</button><button class="secondary" id="pauseBtn">暂停 / 继续</button><button class="secondary" id="soundBtn">音效：关</button></div>
+</section>
+<aside class="side">
+  <section class="card"><h3>🏆 排行榜</h3><ol class="leaderboard" id="leaderboard"><li class="empty">还没有记录，来拿下第一名吧！</li></ol><p class="muted">排行榜保存在当前浏览器中（本地记录），不同设备或浏览器之间不会自动同步。</p><button class="secondary" id="clearScores" style="width:100%;margin-top:8px">清空排行榜</button></section>
+  <section class="card"><h3>🎮 操作方式</h3><div class="muted">电脑：方向键 / WASD 移动，空格开火。<br>手机：使用下方方向键和开火按钮。<br>击毁敌军获得分数，清空敌军进入下一关。</div>
+    <div class="controls" id="controls">
+      <button class="blank">·</button><button data-key="ArrowUp">▲</button><button class="blank">·</button>
+      <button data-key="ArrowLeft">◀</button><button data-key="ArrowDown">▼</button><button data-key="ArrowRight">▶</button>
+      <button class="blank">·</button><button class="fire" data-key="Space">●</button><button class="blank">·</button>
+    </div><div class="help">提示：躲在砖墙后面，找准时机反击！</div>
+  </section>
+  <section class="card"><h3>✍️ 玩家昵称</h3><div class="name-row"><input id="playerName" maxlength="14" placeholder="输入昵称" value="玩家"><button class="primary" id="saveName">保存</button></div><p class="muted">游戏结束后，分数会自动加入本机排行榜。</p></section>
+</aside>
+</main>
+<footer>单文件 HTML · 无需安装 · 支持电脑与手机浏览器</footer>
+<script>
+(()=>{
+'use strict';
+const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
+const W=640,H=480,T=32,COLS=20,ROWS=15;
+const $=id=>document.getElementById(id);
+let score=0,lives=3,level=1,running=false,paused=false,ended=false,raf=0,last=0,spawnTimer=0,enemySpawned=0,enemyLimit=5,keys={},player, enemies=[],bullets=[],walls=[],particles=[],base={x:9*T,y:14*T,alive:true},soundOn=false,audioCtx=null,scoreSaved=false;
+const colors={grass:'#1b2d20',grid:'#213626',brick:'#9a603c',steel:'#87989a',player:'#b7f36b',enemy:'#ef7064',bullet:'#fff1a8'};
+function rand(a,b){return Math.floor(Math.random()*(b-a+1))+a}
+function beep(freq=440,dur=.07){if(!soundOn)return;try{audioCtx=audioCtx||new(window.AudioContext||window.webkitAudioContext)();let o=audioCtx.createOscillator(),g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);o.frequency.value=freq;g.gain.value=.035;o.start();o.stop(audioCtx.currentTime+dur)}catch(e){}}
+function setStatus(s){$('status').textContent=s}
+function makeWalls(){
+ walls=[];for(let r=2;r<12;r++){for(let c=0;c<COLS;c++){if(Math.random()<.105 && !(r<4&&(c<3||c>16)) && !(r>9&&c>=8&&c<=11))walls.push({x:c*T,y:r*T,type:Math.random()<.78?'brick':'steel',hp:Math.random()<.78?2:99})}}
+ // keep central lanes and base area clear
+ walls=walls.filter(w=>!(w.x>=8*T&&w.x<=11*T&&w.y>=10*T));
+}
+function reset(){
+ score=0;lives=3;level=1;running=true;paused=false;ended=false;scoreSaved=false;spawnTimer=0;enemySpawned=0;enemyLimit=5;
+ player={x:9*T,y:11*T,dir:'up',speed:2.1,cool:0,inv:100};enemies=[];bullets=[];particles=[];base={x:9*T,y:14*T,alive:true};makeWalls();
+ for(let i=0;i<2;i++)spawnEnemy();$('overlay').classList.add('hidden');setStatus('战斗中');updateHud();last=performance.now();cancelAnimationFrame(raf);raf=requestAnimationFrame(loop);
+}
+function spawnEnemy(){if(enemies.length>=4||enemySpawned>=enemyLimit)return;let spots=[{x:0,y:0},{x:9*T,y:0},{x:18*T,y:0}];let s=spots[rand(0,spots.length-1)];let e={x:s.x,y:s.y,dir:'down',speed:1.05+level*.12,cool:rand(30,95),hp:1};if(collides(e.x,e.y,28,28,walls))return;enemies.push(e);enemySpawned++}
+function updateHud(){$('score').textContent=score;$('lives').textContent=lives;$('level').textContent=level}
+function rectHit(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y}
+function collides(x,y,w,h,wallList=walls){
+ if(x<0||y<0||x+w>W||y+h>H)return true;
+ for(const q of wallList){if(rectHit({x,y,w,h},{x:q.x,y:q.y,w:T,h:T}))return true}
+ if(base.alive&&rectHit({x,y,w,h},{x:base.x,y:base.y,w:T,h:T}))return true;
+ return false;
+}
+function tankRect(t){return{x:t.x+3,y:t.y+3,w:26,h:26}}
+function blocked(t,nx,ny){const r={x:nx+3,y:ny+3,w:26,h:26};if(nx<0||ny<0||nx+32>W||ny+32>H)return true;for(const w of walls)if(rectHit(r,{x:w.x,y:w.y,w:T,h:T}))return true;if(base.alive&&rectHit(r,{x:base.x,y:base.y,w:T,h:T}))return true;return false}
+function moveTank(t,dir,amount){t.dir=dir;let dx=0,dy=0;if(dir==='up')dy=-amount;if(dir==='down')dy=amount;if(dir==='left')dx=-amount;if(dir==='right')dx=amount;let nx=t.x+dx,ny=t.y+dy;
+ if(!blocked(t,nx,ny)&&!enemies.some(e=>e!==t&&rectHit({x:nx+3,y:ny+3,w:26,h:26},tankRect(e)))&&!(t!==player&&rectHit({x:nx+3,y:ny+3,w:26,h:26},tankRect(player)))){t.x=nx;t.y=ny}}
+function fire(t,owner){if(t.cool>0)return;t.cool=owner==='player'?17:65;let cx=t.x+16,cy=t.y+16,dx=0,dy=0;if(t.dir==='up')dy=-7;if(t.dir==='down')dy=7;if(t.dir==='left')dx=-7;if(t.dir==='right')dx=7;bullets.push({x:cx-3+dx*1.5,y:cy-3+dy*1.5,dx,dy,owner,life:65});beep(owner==='player'?640:240,.04)}
+function update(dt){
+ const step=Math.min(dt,34)/16.67;
+ if(keys.ArrowUp||keys.KeyW)moveTank(player,'up',player.speed*step);else if(keys.ArrowDown||keys.KeyS)moveTank(player,'down',player.speed*step);else if(keys.ArrowLeft||keys.KeyA)moveTank(player,'left',player.speed*step);else if(keys.ArrowRight||keys.KeyD)moveTank(player,'right',player.speed*step);
+ if((keys.Space||keys.Enter)&&player.cool<=0)fire(player,'player');
+ player.cool=Math.max(0,player.cool-step);player.inv=Math.max(0,player.inv-step);
+ for(const e of enemies){e.cool-=step;if(Math.random()<.025*step){let dirs=['up','down','left','right'];moveTank(e,dirs[rand(0,3)],e.speed*2)}else moveTank(e,e.dir,e.speed*step);if(e.cool<=0){fire(e,'enemy');e.cool=rand(45,105)}}
+ spawnTimer+=dt;if(spawnTimer>1050&&enemySpawned<enemyLimit){spawnEnemy();spawnTimer=0}
+ for(let i=bullets.length-1;i>=0;i--){let b=bullets[i];b.x+=b.dx*step;b.y+=b.dy*step;b.life-=step;let remove=b.life<=0||b.x<0||b.y<0||b.x>W||b.y>H;
+  for(let j=walls.length-1;j>=0&&!remove;j--){let w=walls[j];if(rectHit({x:b.x,y:b.y,w:6,h:6},{x:w.x,y:w.y,w:T,h:T})){if(w.type==='brick'){w.hp--;if(w.hp<=0)walls.splice(j,1)}remove=true;beep(160,.025)}}
+  if(!remove&&base.alive&&rectHit({x:b.x,y:b.y,w:6,h:6},{x:base.x,y:base.y,w:T,h:T})){if(b.owner==='enemy'){base.alive=false;gameOver('基地被摧毁！')}remove=true}
+  if(!remove&&b.owner==='player'){for(let j=enemies.length-1;j>=0;j--){if(rectHit({x:b.x,y:b.y,w:6,h:6},tankRect(enemies[j]))){let e=enemies.splice(j,1)[0];score+=100;burst(e.x+16,e.y+16,'#ef7064');remove=true;beep(820,.08);updateHud();break}}}
+  else if(!remove&&b.owner==='enemy'&&player.inv<=0&&rectHit({x:b.x,y:b.y,w:6,h:6},tankRect(player))){remove=true;lives--;player.inv=100;burst(player.x+16,player.y+16,'#b7f36b');updateHud();if(lives<=0)gameOver('任务失败！')}
+  if(remove)bullets.splice(i,1);
+ }
+ for(let i=particles.length-1;i>=0;i--){let p=particles[i];p.life-=step;p.x+=p.dx*step;p.y+=p.dy*step;if(p.life<=0)particles.splice(i,1)}
+ if(!running||paused)return;
+ if(enemies.length===0&&enemySpawned>=enemyLimit){level++;enemyLimit=Math.min(5+level*2,15);enemySpawned=0;spawnTimer=0;makeWalls();player.x=9*T;player.y=11*T;player.inv=90;for(let i=0;i<2;i++)spawnEnemy();$('level').textContent=level;setStatus('第 '+level+' 关')}
+}
+function burst(x,y,color){for(let i=0;i<12;i++){let a=Math.random()*Math.PI*2,s=Math.random()*2.5;particles.push({x,y,dx:Math.cos(a)*s,dy:Math.sin(a)*s,life:18,color})}}
+function drawTank(t,color){
+ ctx.save();ctx.translate(t.x+16,t.y+16);if(t.dir==='up')ctx.rotate(0);if(t.dir==='right')ctx.rotate(Math.PI/2);if(t.dir==='down')ctx.rotate(Math.PI);if(t.dir==='left')ctx.rotate(-Math.PI/2);
+ ctx.fillStyle='#0b120d';ctx.fillRect(-15,-13,30,26);ctx.fillStyle=color;ctx.fillRect(-11,-14,22,28);ctx.fillStyle='#26352a';ctx.fillRect(-14,-14,5,28);ctx.fillRect(9,-14,5,28);ctx.fillStyle=color;ctx.fillRect(-5,-7,10,14);ctx.fillStyle='#d8e7cf';ctx.fillRect(-2,-18,4,17);ctx.restore();
+}
+function draw(){
+ ctx.fillStyle=colors.grass;ctx.fillRect(0,0,W,H);
+ ctx.strokeStyle=colors.grid;ctx.lineWidth=1;for(let x=0;x<W;x+=T){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}for(let y=0;y<H;y+=T){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
+ for(const w of walls){ctx.fillStyle=w.type==='brick'?colors.brick:colors.steel;ctx.fillRect(w.x+1,w.y+1,T-2,T-2);if(w.type==='brick'){ctx.fillStyle='#c78b5a';ctx.fillRect(w.x+2,w.y+8,13,3);ctx.fillRect(w.x+17,w.y+21,13,3);ctx.fillRect(w.x+16,w.y+2,3,10)}else{ctx.strokeStyle='#c5d0d0';ctx.strokeRect(w.x+5,w.y+5,T-10,T-10)}}
+ if(base.alive){ctx.fillStyle='#d3b85f';ctx.fillRect(base.x+3,base.y+3,26,26);ctx.fillStyle='#503d1d';ctx.fillRect(base.x+8,base.y+8,16,16);ctx.fillStyle='#fff0a8';ctx.fillRect(base.x+13,base.y+12,6,8)}else{ctx.strokeStyle='#ff5c5c';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(base.x+5,base.y+5);ctx.lineTo(base.x+27,base.y+27);ctx.moveTo(base.x+27,base.y+5);ctx.lineTo(base.x+5,base.y+27);ctx.stroke()}
+ if(player){if(player.inv<=0||Math.floor(performance.now()/90)%2===0)drawTank(player,colors.player)}
+ for(const e of enemies)drawTank(e,colors.enemy);
+ for(const b of bullets){ctx.fillStyle=colors.bullet;ctx.fillRect(b.x,b.y,6,6)}
+ for(const p of particles){ctx.globalAlpha=Math.max(0,p.life/18);ctx.fillStyle=p.color;ctx.fillRect(p.x,p.y,4,4)}ctx.globalAlpha=1;
+}
+function loop(now){if(!running)return;const dt=now-last;last=now;if(!paused)update(dt);draw();raf=requestAnimationFrame(loop)}
+function gameOver(title){if(ended)return;ended=true;running=false;paused=false;setStatus('游戏结束');saveScore();$('overlayTitle').textContent=title;$('overlayText').textContent='最终得分：'+score+'。再来一局，刷新你的最高纪录！';$('startBtn').textContent='再来一局';$('overlay').classList.remove('hidden');}
+function saveScore(){if(scoreSaved)return;scoreSaved=true;let name=$('playerName').value.trim().slice(0,14)||'玩家';let list=readScores();list.push({name,score,date:new Date().toLocaleDateString('zh-CN')});list.sort((a,b)=>b.score-a.score);list=list.slice(0,10);try{localStorage.setItem('tankBattleScores',JSON.stringify(list))}catch(e){}renderScores()}
+function readScores(){try{return JSON.parse(localStorage.getItem('tankBattleScores')||'[]')}catch(e){return []}}
+function renderScores(){let list=readScores(),el=$('leaderboard');el.innerHTML='';if(!list.length){el.innerHTML='<li class="empty">还没有记录，来拿下第一名吧！</li>';return}list.forEach((v,i)=>{let li=document.createElement('li');li.innerHTML='<span class="rank">'+String(i+1).padStart(2,'0')+'</span><span>'+escapeHtml(v.name)+'<small style="display:block;color:#7f9583;font-size:10px;margin-top:2px">'+escapeHtml(v.date||'')+'</small></span><span class="score">'+v.score+'</span>';el.appendChild(li)})}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function togglePause(){if(!running||ended)return;paused=!paused;setStatus(paused?'已暂停':'战斗中');if(paused){$('overlayTitle').textContent='游戏暂停';$('overlayText').textContent='休息一下，准备好后继续战斗。';$('startBtn').textContent='继续游戏';$('overlay').classList.remove('hidden')}else $('overlay').classList.add('hidden')}
+$('startBtn').addEventListener('click',()=>{if(paused){paused=false;$('overlay').classList.add('hidden');setStatus('战斗中')}else reset()});
+$('restartBtn').addEventListener('click',reset);$('pauseBtn').addEventListener('click',togglePause);
+$('soundBtn').addEventListener('click',()=>{soundOn=!soundOn;$('soundBtn').textContent='音效：'+(soundOn?'开':'关');if(soundOn)beep(520,.06)});
+$('saveName').addEventListener('click',()=>{let v=$('playerName').value.trim().slice(0,14);$('playerName').value=v||'玩家';$('saveName').textContent='已保存';setTimeout(()=>$('saveName').textContent='保存',900)});
+$('clearScores').addEventListener('click',()=>{if(confirm('确定清空本机排行榜吗？')){localStorage.removeItem('tankBattleScores');renderScores()}});
+window.addEventListener('keydown',e=>{let k=e.code==='Space'?'Space':e.code;if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(k))e.preventDefault();keys[k]=true;if(k==='Escape')togglePause();if(k==='Enter'&&!running)reset()});
+window.addEventListener('keyup',e=>{keys[e.code==='Space'?'Space':e.code]=false});
+document.querySelectorAll('#controls button[data-key]').forEach(btn=>{const k=btn.dataset.key;const down=e=>{e.preventDefault();keys[k]=true};const up=e=>{e.preventDefault();keys[k]=false};btn.addEventListener('pointerdown',down);btn.addEventListener('pointerup',up);btn.addEventListener('pointercancel',up);btn.addEventListener('pointerleave',up)});
+renderScores();draw();
+})();
+</script>
+</body>
+</html>
